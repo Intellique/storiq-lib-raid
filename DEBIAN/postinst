@@ -1,0 +1,9 @@
+#!/bin/sh
+
+/etc/init.d/raid_daemon start
+
+rm -f /etc/rc*.d/*raid_daemon
+/bin/ln -s /etc/init.d/raid_daemon  /etc/rc0.d/K80raid_daemon
+/bin/ln -s /etc/init.d/raid_daemon  /etc/rc1.d/K80raid_daemon
+/bin/ln -s /etc/init.d/raid_daemon  /etc/rcS.d/S20raid_daemon
+/bin/ln -s /etc/init.d/raid_daemon  /etc/rc6.d/K80raid_daemon

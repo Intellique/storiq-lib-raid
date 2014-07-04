@@ -1,0 +1,120 @@
+#! /usr/bin/perl
+
+package storiq::lib_raid::Server;
+
+use strict;
+use warnings;
+
+use RPC::Lite::Server;
+
+##########################
+# message on exit
+
+$SIG{TERM} = sub { print "Exiting. \n" ; exit 0 }        ; 
+
+##########################
+# debug
+
+our $DEBUG;
+$DEBUG = 1 if ( @ARGV and $ARGV[0] =~ m/-d/ );
+
+my $logfile = '/var/log/storiq/raid_daemon';
+my $PIDFILE = '/var/run/raid_daemon.pid';
+
+
+_daemonize($logfile);
+
+print "raid_daemon starting up.\n";
+
+unless ( -f $PIDFILE ) {
+    set_pidfile($PIDFILE);
+} else {
+    open my $fh, "<$PIDFILE" or die "can't open $PIDFILE: $!";
+    my $runningpid = <$fh>;
+    warn "PID $runningpid already running.\n";
+
+    unless ( kill 0, $runningpid ) {
+        warn "Not running, overwriting pidfile.\n";
+        set_pidfile($PIDFILE);
+    } else {
+        die "Exiting.\n";
+    }
+}
+
+##########################
+# start service
+
+
+my $server = new storiq::lib_raid::Server::Inner {
+    Transports => ['TCP:Host=127.0.0.1,Port=3307'],
+    Threaded   => 0,
+};
+$server->Loop;
+
+##########################
+# subs
+
+sub _daemonize {
+
+    # Provoque la démonisation du programme.
+    my $log = shift;
+
+    chdir '/'
+      or die('Impossible de changer de répertoire!');
+
+    open( STDIN, '</dev/null' )
+      or die("Impossible de rediriger STDIN : $!");
+    open( STDERR, ">>$log" )
+      or die("Impossible de rediriger STDERR : $!");
+    open( STDOUT, ">>$log" )
+      or die("Impossible de rediriger STDOUT : $!");
+
+    fork and exit 0;
+
+    return 1;
+}
+
+sub set_pidfile {
+    my $pidfile = shift;
+
+    open my $fh, "> $pidfile"
+      or die("Couldn't write the pid $pidfile : $!");
+    print $fh $$;
+    close $fh;
+
+}
+
+####################################################
+# server package 
+
+package storiq::lib_raid::Server::Inner;
+use base qw(RPC::Lite::Server);
+use Lib_Raid;
+
+sub get_all_info {
+    my ( $client, @params ) = @_;
+	
+	print "DEBUG: get_all_info\n" if $DEBUG;
+
+	my $data=Lib_Raid::get_all_info @params;;
+	print "\n";
+	
+    return $data
+}
+
+sub get_all_controllers_list {
+    my ( $client, @params ) = @_;
+
+	print "DEBUG: get_all_controllers_list\n\n" if $DEBUG;
+
+    return Lib_Raid::get_all_controllers_list @params;
+}
+
+sub call_action {
+    my ( $client, @params ) = @_;
+
+	print "DEBUG: call_action\n" if $DEBUG;
+
+    return Lib_Raid::call_action @params;
+}
+
