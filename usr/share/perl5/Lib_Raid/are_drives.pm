@@ -34,8 +34,7 @@ sub get_drives_list {
       if ( !defined($controller_num) );
 
     # getting informations about drives
-    my @cmdparams = ( "set curctrl=$controller_num\n", "disk info\n", "exit\n");
-	my ( $ret_code, $data ) = _exec_cmd($are_cmd, @cmdparams);
+	my ( $ret_code, $data ) = _exec_cmd("$are_cmd disk info");
 	
 	return ( $ret_code, "unable to get drives informations : $data" )
       if ($ret_code eq 1);

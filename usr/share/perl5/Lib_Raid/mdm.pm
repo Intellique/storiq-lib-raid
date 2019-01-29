@@ -10,7 +10,7 @@ use strict;
 use warnings;
 
 use IPC::Run3;
-use lib_raid_plugins::lib_raid_codes;
+use Lib_Raid::lib_raid_codes;
 
 our $CONTROLLER_PREFIX = 'mdm';
 our $mdm_cmd           = '/sbin/mdadm';

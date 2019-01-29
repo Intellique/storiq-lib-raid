@@ -110,7 +110,7 @@ sub get_drive_info {
 
         # model
         # TODO should check for symlinks, etc
-        my ($base_device) = ( $drive =~ m#^/dev/([a-z]+)\d+# );
+        my ($base_device) = ( $drive =~ m#^/dev/([a-z]+)\d*# );
 
         my %tmphash;
         for my $prop (qw( vendor model )) {
@@ -122,8 +122,8 @@ sub get_drive_info {
             close $fv;
         }
 
-        $hash->{model} = $tmphash{vendor} if $tmphash{vendor};
-        $hash->{model} .= ' ' . $tmphash{model} if $tmphash{model};
+        $hash->{vendor} = $tmphash{vendor} if $tmphash{vendor};
+        $hash->{model} = $tmphash{model} if $tmphash{model};
     }
     return ( 0, $hash );
 }

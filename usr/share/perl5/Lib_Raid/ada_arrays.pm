@@ -47,15 +47,15 @@ sub get_arrays_info {
     $tmp_hash->{drives} = ();
     my $lun_number = -1;
     foreach my $line (@tmp_tab) {
-        if (   $line =~ m/Logical device number /
-            && $line !~ m/Logical device number $lun_number/ )
+        if (   $line =~ m/Logical [d|D]evice number /
+            && $line !~ m/Logical [d|D]evice number $lun_number/ )
         {
             if ( $lun_number > -1 ) {
                 $hash->{ 'a' . $lun_number } = $tmp_hash;
                 $tmp_hash                    = {};
                 $tmp_hash->{drives}          = ();
             }
-            ($lun_number) = ( $line =~ m/Logical device number (\d+)/ );
+            ($lun_number) = ( $line =~ m/Logical [d|D]evice number (\d+)/ );
         }
 
         # Raid Type
@@ -75,17 +75,24 @@ sub get_arrays_info {
         # Size
         if ( $line =~ m/ +Size +/ ) {
             ( $tmp_hash->{size} ) = ( $line =~ m/ +Size +\: (\d+)/ );
-
-# In want in MB now
-# $tmp_hash->{size} = sprintf("%.2f", $tmp_hash->{size} / 1024); # in GB please !
         }
 
         # Array Status
-        if ( $line =~ m/ +Status of logical device +/ ) {
-            $tmp_hash->{status} = lib_raid_codes::get_state_code(
-                $line =~ m/ +Status of logical device +\: (.*)/ );
+        if ( $line =~ m/ +Status of logical device +\: (.*)/i ) {
+            my $status_string = $1;
+            my ( $err_code, $progression );
 
-            my ( $err_code, $status_string, $progression ) =
+            # arcconf v9 doesn't have stable STATUS!
+            # Impacted ( Build/Verify with fix : 31 % )
+
+            if ( $status_string =~ /Impacted/ ) {
+                $status_string = 'Impacted';
+            }
+
+            $tmp_hash->{status} =
+              lib_raid_codes::get_state_code($status_string);
+
+            ( $err_code, $status_string, $progression ) =
               _get_lun_status( $controller_number, $lun_number );
 
             my $taskstatus = lib_raid_codes::get_state_code($status_string);
@@ -113,7 +120,7 @@ sub get_arrays_info {
             my ($channel) = ( $line =~ m/.+: \w+ \((.+)\).+/ );
 
             my ( $err, $data );
-            if ( $channel =~ /Controller:\d+,Connector:(\d+),Device:(\d+)/ ) {
+            if ( $channel =~ /Connector:(\d+),\s*Device:(\d+)/ ) {
 
                 # case arcconf > 7.00 : reports connector:device (5000)
                 # reports enclosure, slot (6000)
@@ -121,13 +128,18 @@ sub get_arrays_info {
                 ( $err, $data ) =
                   _get_drive_conn_number( $controller_number, $channel );
 
-            } elsif ( $channel =~ /Controller:\d+,Enclosure:(\d+),Slot:(\d+)/ )
-            {
+            } elsif ( $channel =~ /Enclosure:(\d+),\s*Slot:(\d+)/ ) {
 
                 # case arcconf > 7.00 : reports enclosure, slot (6000)
                 $channel = "Enclosure $1, Slot $2";
                 ( $err, $data ) =
                   _get_drive_conn_number( $controller_number, $channel );
+                  
+            } elsif ($channel =~ /Channel:(\d+),\s*Device:(\d+)/) {
+				 # case arcconf > 9.00 :  reports Channel, device (8000)
+				 $channel = "$1,$2";
+				 ( $err, $data ) =
+                  _get_drive_number( $controller_number, $channel );
 
             } else {
 
@@ -249,7 +261,7 @@ sub create_array {
       if ( exists( $hash->{name} ) && defined( $hash->{name} ) );
 
     # currently we only make arrays spanning whole drives
-	# we could add a --size parameter.
+    # we could add a --size parameter.
     $command .= 'max ';
 
     # raid_level
@@ -296,7 +308,11 @@ sub verify {
 
     foreach my $array ( @{ $hash->{arrays} } ) {
         my ( $ret_code, $array_info ) = get_array_info( $controller, $array );
-        if ($ret_code) { $error += $ret_code; $message .= "$array : $array_info\n"; next }
+        if ($ret_code) {
+            $error += $ret_code;
+            $message .= "$array : $array_info\n";
+            next;
+        }
 
         if ( $array_info->{status} == 13 or $array_info->{status} == 4 ) {
             $message .= "Array $array is already rebuilding/verifying.\n";

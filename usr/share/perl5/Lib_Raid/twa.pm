@@ -18,17 +18,17 @@
 ##
 
 package twa;
-require 'lib_raid_plugins/twa_arrays.pm';
-require 'lib_raid_plugins/twa_controllers.pm';
-require 'lib_raid_plugins/twa_drives.pm';
-require 'lib_raid_plugins/twa_luns.pm';
-require 'lib_raid_plugins/twa_spares.pm';
+require Lib_Raid::twa_arrays;
+require Lib_Raid::twa_controllers;
+require Lib_Raid::twa_drives;
+require Lib_Raid::twa_luns;
+require Lib_Raid::twa_spares;
 
 use strict;
 use warnings;
 
 use IPC::Run3;
-use lib_raid_plugins::lib_raid_codes;
+use Lib_Raid::lib_raid_codes;
 
 # DEFINE
 our $CONTROLLER_PREFIX = 'twa';

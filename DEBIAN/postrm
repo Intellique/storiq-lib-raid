@@ -1,5 +1,6 @@
 #!/bin/sh
+set -e
 
-/etc/init.d/raid_daemon	stop
-
+systemctl stop raid_daemon
 rm -f /etc/rc*.d/*raid_daemon
+

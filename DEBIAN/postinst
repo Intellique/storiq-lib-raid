@@ -1,9 +1,7 @@
 #!/bin/sh
+set -e
 
-/etc/init.d/raid_daemon start
+systemctl daemon-reload
+systemctl enable raid_daemon
+systemctl start raid_daemon
 
-rm -f /etc/rc*.d/*raid_daemon
-/bin/ln -s /etc/init.d/raid_daemon  /etc/rc0.d/K80raid_daemon
-/bin/ln -s /etc/init.d/raid_daemon  /etc/rc1.d/K80raid_daemon
-/bin/ln -s /etc/init.d/raid_daemon  /etc/rcS.d/S20raid_daemon
-/bin/ln -s /etc/init.d/raid_daemon  /etc/rc6.d/K80raid_daemon

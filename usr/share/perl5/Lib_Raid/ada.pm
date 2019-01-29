@@ -18,24 +18,25 @@
 ##
 
 package ada;
-require 'lib_raid_plugins/ada_luns.pm';
-require 'lib_raid_plugins/ada_drives.pm';
-require 'lib_raid_plugins/ada_controllers.pm';
-require 'lib_raid_plugins/ada_arrays.pm';
-require 'lib_raid_plugins/ada_enclosures.pm';
-require 'lib_raid_plugins/ada_spares.pm';
+require Lib_Raid::ada_luns;
+require Lib_Raid::ada_drives;
+require Lib_Raid::ada_controllers;
+require Lib_Raid::ada_arrays;
+require Lib_Raid::ada_enclosures;
+require Lib_Raid::ada_spares;
 
 use strict;
 use warnings;
 use IPC::Run3;
 
-use lib_raid_plugins::lib_raid_codes;
+use Lib_Raid::lib_raid_codes;
 
 use Data::Dumper;
 
 # DEFINE
 our $CONTROLLER_PREFIX = 'ada';
 our $ada_cmd           = '/usr/sbin/arcconf';
+
 # our $ada_cmd           = '/root/fakearc';
 
 # FLAGS
@@ -108,8 +109,8 @@ sub _get_adapter_information {
 
         # number of lun/arrays
         ( $hash->{numberofluns} ) =
-          ( $line =~ m/.+Logical devices\/Failed\/Degraded +\: (\d+)\/.*/ )
-          if ( $line =~ m/.+Logical devices\/Failed\/Degraded +/ );
+          ( $line =~ m/.+Logical [d|D]evices\/Failed\/Degraded +\: (\d+)\/.*/ )
+          if ( $line =~ m/.+Logical [d|D]evices\/Failed\/Degraded +/ );
         $hash->{numberofarrays} = $hash->{numberofluns};
 
         # model
@@ -135,9 +136,11 @@ sub _get_adapter_information {
     my $flag = 0;
     foreach my $line (@tmp_tab) {
         $flag = 1
-          if ( !$flag && $line =~ m/.+Controller (Battery|ZMM|Cache Backup Unit) Information/ );
+          if (!$flag
+            && $line =~
+            m/Controller (Battery|ZMM|Cache Backup Unit) Information/ );
 
-        if ( $flag and $line =~ m/.+Status +\: (.+)/ ) {
+        if ( $flag and $line =~ m/.+Unit Status +\: (.+)/ ) {
             $hash->{BBU}->{status} = lib_raid_codes::get_state_code( ($1) );
         }
 
@@ -175,7 +178,7 @@ m/.+Time remaining \(at current draw\)\s+:\s+(\d+) days, (\d+) hours, (\d+) minu
 
 sub _get_lun_status {
     my ( $controller, $lun ) = @_;
-	
+
     my $cmd = "$ada_cmd getstatus $controller";
 
     my ( $ret_code, $data ) = _exec_cmd($cmd);
@@ -185,13 +188,13 @@ sub _get_lun_status {
     # splitting my output string in an array
     my @tmp_tab = split( /\n/, $data );
 
-    # Logical device Task:
-    #    Logical device                 : 0
+    # Logical Device Task:
+    #    Logical Device                 : 0
     #    Task ID                        : 100
-    #    Current operation              : Build/Verify
+    #    Current operation              : Build/Verify with fix
     #    Status                         : In Progress
     #    Priority                       : High
-    #    Percentage complete            : 98
+    #    Percentage complete            : 92
 
     my $status_string = '';
     my $progression   = 0;
@@ -199,9 +202,9 @@ sub _get_lun_status {
     my $current_lun = -1;
     foreach my $line (@tmp_tab) {
         $current_lun = $lun
-          if ( $line =~ m/Logical device/ && $line =~ m/ : $lun$/ );
+          if ( $line =~ m/Logical [d|D]evice/ && $line =~ m/ : $lun$/ );
         $current_lun = -1
-          if ( $line =~ m/Logical device/ && $line !~ m/ : $lun$/ );
+          if ( $line =~ m/Logical [d|D]evice/ && $line !~ m/ : $lun$/ );
         if ( $current_lun > -1 && $current_lun == $lun ) {
             ($status_string) = ( $line =~ m/ : (.+)/ )
               if ( $line =~ m/Current operation/ );

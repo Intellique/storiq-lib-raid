@@ -85,8 +85,8 @@ sub get_enclosures_info {
 
         # Slot number
 
-        if ( $line =~ m/ +Reported Channel,Device(\(T:L\))* +\: (\d+,\d+)/ ) {
-            $tmp_hash->{slotnumber} = $2;
+        if ( $line =~ m/ +Reported Channel,Device\(T:L\) +\: (\d+,\d+)/ ) {
+            $tmp_hash->{slotnumber} = $1;
         }
 
         # Vendor

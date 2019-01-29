@@ -8,10 +8,10 @@
 ##
 ## ###################################
 ##
-## Made by Florac Emmanuel
-## Login   <eflorac@intellique.com>
+## Made by Emmanuel Florac
+## Email   <dev@intellique.com>
 ##
-## Started on  mercredi 27 avril 2011, 15:36:20 (UTC+0200) Florac Emmanuel
+## Started on  Tue Mar 24 17:44:28 2009 Boutonnet Alexandre
 ##
 ## ###################################
 ##
@@ -54,7 +54,7 @@ sub get_enclosures_info {
       if ( !defined($controller_number) );
 
     # getting informations about enclosures
-    my $cmd = "$lsi_cmd -EncInfo -a$controller_number";
+    my $cmd = "$lsi_cmd /c$controller_number/eall show all";
     my ( $ret_code, $data ) = _exec_cmd($cmd);
     return ( $ret_code, "unable to get enclosures information : $data" )
       if ($ret_code);
@@ -66,7 +66,7 @@ sub get_enclosures_info {
     my $enclosure_id     = -1;
 
     foreach my $line (@tmp_tab) {
-        if ( $line =~ m/^\s+Enclosure (\d+):/ ) {
+        if ( $line =~ m(^Enclosure /c$controller_number/e(\d+)\s+:) ) {
             $hash->{ 'e' . $enclosure_id } = $tmp_hash
               if $enclosure_number >= 0;
             $enclosure_number = $1;
@@ -79,30 +79,35 @@ sub get_enclosures_info {
                 numberofslots  => -1,
                 numberofdrives => -1,
                 numberofpws    => -1,
+                numberoffans   => -1,
                 connector      => '-1',
 
             };
 
         } else {
-            $enclosure_id = $1 if $line =~ /^\s+Device ID\s+:\s+(\d+)/;
+            $enclosure_id = $1 if $line =~ /^Device ID\s+=\s+(\d+)/;
             $tmp_hash->{vendor} = $1
-              if $line =~ /^\s+Vendor Identification\s+:\s+([\w\s]+)/;
+              if $line =~ /^Vendor Identification\s+=\s+([\w\s]+)/;
             $tmp_hash->{model} = $1
-              if $line =~ /^\s+Product Identification\s+:\s+(\w+)/;
-            $tmp_hash->{numberofslots} = $1
-              if $line =~ /^\s+Number of Slots\s+:\s+(\d+)/;
-            $tmp_hash->{numberofdrives} = $1
-              if $line =~ /^\s+^\s+Number of Physical Drives\s+:\s+(\d+)/;
-            $tmp_hash->{numberofpws} = $1
-              if $line =~ /^\s+Number of Power Supplies\s+:\s+(\d+)/;
+              if $line =~ /^Product Identification\s+=\s+([\w\s]+)/;
+            $tmp_hash->{connector} = $1
+              if $line =~ /Connector Name\s+=\s+([\w\s\-]+)/;
             $tmp_hash->{status} = lib_raid_codes::get_state_code($1)
-              if $line =~ /^\s+Status\s+:\s+(\w+)/;
+              if $line =~ /Status\s+=\s+(\w+)/;
 
-            # connector
+            if ( $line =~
+                /^\s+$enclosure_number\s+\w+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/ )
+            {
+                $tmp_hash->{numberofslots}  = $1;
+                $tmp_hash->{numberofdrives} = $2;
+                $tmp_hash->{numberofpws}    = $3;
+                $tmp_hash->{numberoffans}   = $4;
+            }
+
         }
     }
 
-    # Apparently there's always an enclosure 252 for SGPIO, see
+    # there's always an enclosure 252 for SGPIO, see
     # http://en.wikipedia.org/wiki/SGPIO
     # This enclosure should be ignored
     if ( $tmp_hash->{model} ne 'SGPIO' and $enclosure_number >= 0 ) {

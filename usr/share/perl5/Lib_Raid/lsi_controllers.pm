@@ -8,11 +8,10 @@
 ##
 ## ###################################
 ##
-## Made by Boutonnet Alexandre
-## Login   <aboutonnet@intellique.com>
+## Made by Emmanuel Florac
+## Email   <dev@intellique.com>
 ##
-## Started on  Tue Mar 24 12:10:52 2009 Boutonnet Alexandre
-## Last update Tue Mar 24 13:42:27 2009 Boutonnet Alexandre
+## Started on  Tue Mar 24 17:44:28 2009 Boutonnet Alexandre
 ##
 ## ###################################
 ##
@@ -28,14 +27,15 @@ our $lsi_cmd;
 # [0] : 0 => Ok, != O => Fail
 # [1] : Ok => array, Fail => error_msg
 sub get_controllers_list {
-    my $cmd = "$lsi_cmd -adpCount -NoLog | grep Controller";
+    my $cmd = "$lsi_cmd show";
 
     my ( $ret_code, $data ) = _exec_cmd($cmd);
+
     return ( $ret_code, "unable to get controller informations : $data" )
       if ($ret_code);
 
     # Getting the number of controllers
-    my ($number_ctl) = ( $data =~ m/Controller Count: (\d+)\./ );
+    my ($number_ctl) = ( $data =~ m/Number of Controllers = (\d+)/g );
 
     my $return_tab = ();
     foreach my $num ( 0 .. ( $number_ctl - 1 ) ) {
@@ -63,7 +63,7 @@ sub get_controller_info {
     return ( 1, "unable to find the controller $controller" )
       if ( !defined($controller_number) );
 
-    my $cmd = "$lsi_cmd -adpAllInfo -a$controller_number -NoLog";
+    my $cmd = "$lsi_cmd /c$controller_number show";
 
     my ( $ret_code, $data ) = _exec_cmd($cmd);
     return ( $ret_code, "unable to get controller informations : $data" )
@@ -72,31 +72,41 @@ sub get_controller_info {
     # splitting my output string in an array
     my @tmp_tab = split( /\n/, $data );
 
+    my $has_bbu = 0;
+
     foreach my $line (@tmp_tab) {
 
         # Model
-        ( $hash->{model} ) = ( $line =~ m/: (.+)$/ )
+        ( $hash->{model} ) = ( $line =~ m/= (.+)$/ )
           if ( $line =~ m/Product Name/ );
 
         # Serial Number
-        ( $hash->{serialnumber} ) = ( $line =~ m/: (.+)$/ )
-          if ( $line =~ m/Serial No/ );
+        ( $hash->{serialnumber} ) = ( $line =~ m/= (.+)$/ )
+          if ( $line =~ m/Serial Number/ );
+
+        #count lines to BBU info
+        $has_bbu++ if $has_bbu;
 
         # BBU
-        if ( $line =~ m/BBU/ && !defined( $hash->{BBU}->{status} ) ) {
-            $hash->{BBU}->{status} =
-              lib_raid_codes::get_state_code('Not Installed');
-            $hash->{BBU}->{status} = lib_raid_codes::get_state_code('ok')
-              if ( $line =~ m/Present/ );
+        $has_bbu = 1
+          if ( $line =~ m/Cachevault_Info/
+            && !defined( $hash->{BBU}->{status} ) );
+
+        if ( $has_bbu == 7 ) {
+            ( $hash->{BBU}{model}, $hash->{BBU}{status}, $hash->{BBU}{temp} ) =
+              ( $line =~ m/^(\w+)\s+(\w+)\s+(\w+)\s+/ );
+
+            $hash->{BBU}{status} =
+              lib_raid_codes::get_state_code( $hash->{BBU}{status} );
         }
 
         # WWN
-        ( $hash->{WWN} ) = ( $line =~ m/: (.+)$/ )
+        ( $hash->{WWN} ) = ( $line =~ m/= (.+)$/ )
           if ( $line =~ m /SAS Address/ );
 
         # Number of arrays / luns
         if ( $line =~ m /Virtual Drives/ ) {
-            ( $hash->{numberofarrays} ) = ( $line =~ m/: (\d+)/ );
+            ( $hash->{numberofarrays} ) = ( $line =~ m/= (\d+)/ );
 
             # force to  number
             $hash->{numberofarrays} += 0;
@@ -107,7 +117,7 @@ sub get_controller_info {
     # All misc things not currently handle
     $hash->{status}         = lib_raid_codes::get_state_code('ok');
     $hash->{numberofspares} = 0;
-    $hash->{vendor}         = 'LSI';
+    $hash->{vendor}         = 'BROADCOM';
 
     return ( 0, $hash );
 }

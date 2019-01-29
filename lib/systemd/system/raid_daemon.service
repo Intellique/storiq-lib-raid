@@ -1,0 +1,13 @@
+# systemd service for managing storiq raid daemon
+
+[Unit]
+Description=Storiq Raid Daemon
+After=local-fs.target network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/raid_daemon
+
+[Install]
+WantedBy=multi-user.target
+

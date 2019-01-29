@@ -106,18 +106,19 @@ sub get_drives_info {
 
     my $tmp_hash        = {};
     my $drive_number    = -1;
-    my $drivestatus = 'ok'; 
-	my $flag_enclosure  = 0;    # my anti-enclosure filter :)
-    my $flag_search_lun = 0;    # flag to active lun state search
+    my $drivestatus     = 'ok';
+    my $flag_enclosure  = 0;      # my anti-enclosure filter :)
+    my $flag_search_lun = 0;      # flag to active lun state search
     foreach my $line (@tmp_tab) {
         if (   $line =~ m/ +Device \#/
             && $line !~ m/ +Device \#$drive_number/ )
         {
             if ( $drive_number > -1 && $flag_enclosure ) {
-				$tmp_hash->{status} = lib_raid_codes::get_drive_status_code($drivestatus) ;
+                $tmp_hash->{status} =
+                  lib_raid_codes::get_drive_status_code($drivestatus);
                 $hash->{ 'd' . $drive_number } = $tmp_hash;
-				$drivestatus = 'ok';
-                $tmp_hash = {};
+                $drivestatus                   = 'ok';
+                $tmp_hash                      = {};
             }
             ($drive_number) = ( $line =~ m/ +Device \#(\d+)/ );
             $flag_enclosure  = 0;
@@ -140,8 +141,8 @@ sub get_drives_info {
         }
 
         # Slot number
-        if ( $line =~ m/ +Reported Channel,Device(\(T:L\))* +\: (\d+,\d+)/ ) {
-            $tmp_hash->{slotnumber} = "$1,$2";
+        if ( $line =~ m/ +Reported Channel,Device\(T:L\) +\: (\d+,\d+)/ ) {
+            $tmp_hash->{slotnumber} = $1;
         } elsif (
             $line =~ m/ +Reported Location +\: Connector (\d+), Device (\d+)/ )
         {
@@ -151,6 +152,12 @@ sub get_drives_info {
         } elsif ( $line =~ m/ +Reported Location +\: Enclosure (\d+), (\d+)/ ) {
 
             # with arcconf > V7.00, series 6000
+            $tmp_hash->{slotnumber} = "$1,$2";
+        } elsif (
+            $line =~ m/ +Reported Location +\: Enclosure (\d+), Slot (\d+)/ )
+        {
+
+            # with arcconf > V9.00, series 8000
             $tmp_hash->{slotnumber} = "$1,$2";
         }
 
@@ -188,14 +195,14 @@ sub get_drives_info {
           if ( $line =~ m/ +Serial number +/ );
 
         # drive status
-		if ( $line =~ m/^ +Failed logical device segments\s*:\s*True/ ){
-			$drivestatus = 'inconsistent';
-		}
-		
+        if ( $line =~ m/^ +Failed logical device segments\s*:\s*True/ ) {
+            $drivestatus = 'inconsistent';
+        }
+
         if ( $line =~ m/^ +State +/ ) {
             my ($status) = ( $line =~ m/ +State +\: (.+)/ );
 
-            if ( $status eq "Hot Spare" ) {
+            if ( $status =~ m/Hot.Spare/ ) {
                 $tmp_hash->{inarray} =
                   lib_raid_codes::get_drive_inarray_code('hotspare');
             } elsif ( $status eq "Ready" ) {
@@ -208,7 +215,7 @@ sub get_drives_info {
                 $flag_search_lun = 1;
             } elsif ( $status eq "Rebuilding" ) {
                 $drivestatus = 'rebuilding';
-				
+
                 # I known that I get the slotnumber in a next loop
                 # I put on my lun search flag..
                 $flag_search_lun = 1;
@@ -217,8 +224,8 @@ sub get_drives_info {
                 $tmp_hash->{inarray} =
                   lib_raid_codes::get_drive_inarray_code('unused');
             }
-			
-		}
+
+        }
 
         # WWN
         ( $tmp_hash->{WWN} ) = ( $line =~ m/ +World-wide name +\: (\w+)/ )
@@ -230,15 +237,15 @@ sub get_drives_info {
           if ( $line =~ m/ +Transfer Speed +/ );
 
     }
-	
-	# store info for the last drive
+
+    # store info for the last drive
     if ($flag_enclosure) {
-		$tmp_hash->{status} = lib_raid_codes::get_drive_status_code($drivestatus) ;
-		$hash->{ 'd' . $drive_number } = $tmp_hash;
-		$drivestatus = 'ok';
-		$tmp_hash = {};
-	}
-	
+        $tmp_hash->{status} =
+          lib_raid_codes::get_drive_status_code($drivestatus);
+        $hash->{ 'd' . $drive_number } = $tmp_hash;
+        $drivestatus                   = 'ok';
+        $tmp_hash                      = {};
+    }
 
     return ( 0, $hash );
 }

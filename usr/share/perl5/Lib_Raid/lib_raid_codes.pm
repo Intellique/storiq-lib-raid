@@ -28,6 +28,12 @@ my $drive_status_codes = {
     'sync'          => 0,      # mdadm OK
     'normal'        => 0,      # Areca OK
     'good'          => 0,      # DDN Ok
+    'ugood'         => 0,      # Broadcom storcli
+    'onln'          => 0,
+    'dhs'           => 0,
+    'ghs'           => 0,
+    'ubad'          => 1,
+    'offln'         => 1,
     'fail'          => 1,
     'rebuilding'    => 2,      # drive used to rebuild an array
     'expanding'     => 3,      # drive used to expand an array
@@ -45,7 +51,7 @@ my $drive_status_codes = {
     'prtl r'        => 5,
     'norm*r'        => 0,
     'norm*'         => 0,
-	'norm'          => 0,
+    'norm'          => 0,
     'miss'          => 7,
     'miss*l'        => 7,
     'miss*r'        => 7,
@@ -96,6 +102,7 @@ my $drive_inarray_codes = {
 my $cli_codes = {
     'battery failed or missing'    => 1,     # xyratex bbu
     'build/verify'                 => 4,     # adaptec ...
+    'build/verify with fix'        => 4,     # adaptec ...
     'verify with fix'              => 4,     # adaptec
     'clean, degraded, recovering'  => 5,     # md
     'clean, degraded, recovering ' => 5,     # mdadm 3.2 GRRRRR
@@ -105,6 +112,10 @@ my $cli_codes = {
     'partially degraded'           => 6,     # LSI Megaraid
     'degraded-rbld'                => 5,     # 3ware
     'error'                        => 1,     # 3 ware bbu
+    'initialization '              => 4,     # LSI
+    'background initialization '   => 4,     # LSI
+    'reconstruction '              => 5,     # LSI
+    'check consistency '           => 13,    # LSI
     'failed'                       => 1,
     'fault'                        => 1,     # 3 ware bbu
     'good'                         => 0,     # xyratex bbu
@@ -123,7 +134,7 @@ my $cli_codes = {
     'clean '                       => 0,     # mdadm 3.2 GRRRRRR
     'normal'                       => 0,     # LSI / DDN enclosure
     'norm'                         => 0,     # DDN
-    'optimal'                      => 0,     # adaptec
+    'optimal'                      => 0,     # adaptec / avago
     'zmm optimal'                  => 0,     # adaptec ZMM
     'ready'                        => 0,     # adaptec AFM-700 / DDN
     'not present'                  => 3,     # adaptec AFM-700
@@ -183,45 +194,50 @@ my $state_codes_to_strings = {
 # 2 -> sas 3Gb
 # 3 -> sata 6Gb
 # 4 -> sas 6Gb
+# 5 -> SAS 12Gb
 my $drive_type = {
-    'SATA 1.5 Gb/s' => 0,    # Adaptec
-    'SATA 3.0 Gb/s' => 1,    # Adaptec
-    'SAS 3.0 Gb/s'  => 2,    # Adaptec
-    'SAS 6.0 Gb/s'  => 3,    # Adaptec
-    'SATA 1.5 Gbps' => 0,    # 3ware
-    'SATA 3.0 Gbps' => 1,    # 3ware
-    'SAS 3.0 Gbps'  => 2,    # 3ware
-    'SATA 1.5Gb/s'  => 0,    # LSI
-    'SATA 3.0Gb/s'  => 1,    # LSI
-    'SAS 3.0Gb/s'   => 2,    # LSI
-    'SAS 6.0Gb/s'   => 2,    # LSI
-    'SAS 12.0Gb/s'  => 2,    # LSI
-    'SATA'          => 1,    # Areca, DDN
-    'SAS'           => 2,    # Areca, DDN
+    'SATA 1.5 Gb/s'  => 0,    # Adaptec
+    'SATA 3.0 Gb/s'  => 1,    # Adaptec
+    'SAS 3.0 Gb/s'   => 2,    # Adaptec
+    'SATA 6.0 Gb/s'  => 3,    # Adaptec
+    'SAS 6.0 Gb/s'   => 4,    # Adaptec
+    'SAS 12.0 Gb/s'  => 5,    # Adaptec
+    'SATA 12.0 Gb/s' => 6,    # Adaptec
+    'SATA 1.5 Gbps'  => 0,    # 3ware
+    'SATA 3.0 Gbps'  => 1,    # 3ware
+    'SAS 3.0 Gbps'   => 2,    # 3ware
+    'SATA 1.5Gb/s'   => 0,    # LSI
+    'SATA 3.0Gb/s'   => 1,    # LSI
+    'SAS 3.0Gb/s'    => 2,    # LSI
+    'SATA 6.0Gb/s'   => 3,    # LSI
+    'SAS 6.0Gb/s'    => 4,    # LSI
+    'SAS 12.0Gb/s'   => 5,    # LSI
+    'SATA'           => 1,    # Areca, DDN
+    'SAS'            => 2,    # Areca, DDN
 
 };
 
 my $raid_string_to_codes = {
-    'SINGLE'        => -1,    # 3ware
+    'single'        => -1,    # 3ware
     '0'             => 0,     # Adaptec, LSI/PERC
-    'RAID-0'        => 0,     # 3ware
+    'raid-0'        => 0,     # 3ware
     '1'             => 1,     # Adaptec, LSI/PERC
-    'RAID-1'        => 1,     # 3ware
-    '1E'            => 11,    # Adaptec
+    'raid-1'        => 1,     # 3ware
+    '1e'            => 11,    # Adaptec
     '5'             => 5,     # Adaptec, LSI/PERC
-    'RAID-5'        => 5,     # 3ware
-    '5EE'           => 51,    # Adaptec
+    'raid-5'        => 5,     # 3ware
+    '5ee'           => 51,    # Adaptec
     '6'             => 6,     # Adaptec, LSI/PERC
-    'RAID-6'        => 6,     # 3ware, Adaptec
+    'raid-6'        => 6,     # 3ware, Adaptec
     '10'            => 10,    # Adaptec
-    'RAID-10'       => 10,    # 3ware, Adaptec
+    'raid-10'       => 10,    # 3ware, Adaptec
     '50'            => 50,    # Adaptec
-    'RAID-50'       => 50,    # 3ware, Adaptec
+    'raid-50'       => 50,    # 3ware, Adaptec
     '60'            => 60,    # Adaptec
-    'RAID-60'       => 60,    # 3ware, Adaptec
+    'raid-60'       => 60,    # 3ware, Adaptec
     'jbod'          => -2,    # raid_cli
     'single'        => -1,    # raid_cli
-    'Simple_volume' => -1,    # Adaptec
+    'simple_volume' => -1,    # Adaptec
     'raid0'         => 0,     # raid_cli
     'raid1'         => 1,     # raid_cli
     'raid5'         => 5,     # raid_cli
@@ -353,8 +369,8 @@ sub get_drive_type_code {
 sub get_raid_level_code {
     my $code = shift;
 
-    return $raid_string_to_codes->{$code}
-      if ( exists( $raid_string_to_codes->{$code} ) );
+    return $raid_string_to_codes->{ lc($code) }
+      if ( exists( $raid_string_to_codes->{ lc($code) } ) );
     return -128;
 }
 

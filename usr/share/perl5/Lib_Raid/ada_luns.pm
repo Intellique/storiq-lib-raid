@@ -46,8 +46,8 @@ sub get_luns_info {
     my $tmp_hash   = {};
     my $lun_number = -1;
     foreach my $line (@tmp_tab) {
-        if (   $line =~ m/Logical device number /
-            && $line !~ m/Logical device number $lun_number/ )
+        if (   $line =~ m/Logical [d|D]evice number /
+            && $line !~ m/Logical [d|D]evice number $lun_number/ )
         {
             if ( $lun_number > -1 ) {
 
@@ -60,38 +60,50 @@ sub get_luns_info {
                 $hash->{ 'l' . $lun_number } = $tmp_hash;
                 $tmp_hash = {};
             }
-            ($lun_number) = ( $line =~ m/Logical device number (\d+)/ );
+            ($lun_number) = ( $line =~ m/Logical [d|D]evice number (\d+)/ );
         }
 
         # Lun Name
-        if ( $line =~ m/ +Logical device name +\: (.*)/ ) {
+        if ( $line =~ m/ +Logical [d|D]evice name +\: (.*)/ ) {
             $tmp_hash->{name} = $1;
         }
 
         # Lun Status
-        if ( $line =~ m/ +Status of logical device +/ ) {
-            $tmp_hash->{status} = lib_raid_codes::get_state_code(
-                $line =~ m/ +Status of logical device +\: (.*)/ );
-			
-			my ( $err_code, $status_string, $progression ) =
-                  _get_lun_status( $controller_number, $lun_number );
-			
-			my $taskstatus = lib_raid_codes::get_state_code($status_string);
-			
-			# if the array is in build/verify but OK, it's verify, else it's rebuild
-			if ( $tmp_hash->{status} ) {
-				# not optimal
-					if ($taskstatus != -1) {
-                	$tmp_hash->{status} = 5 ; # rebuild
-					$tmp_hash->{progression} = $progression;
-            	} 
-			} else {
-				# optimal
-				if ( $taskstatus != -1 ) {
-					$tmp_hash->{status} = 13 ; # verify
-					$tmp_hash->{progression} = $progression;
-				}
-			}
+        if ( $line =~ m/ +Status of logical device +\: (.*)/i ) {
+            my $status_string = $1;
+            my ( $err_code, $progression );
+
+            # arcconf v9 doesn't have stable STATUS!
+            # Impacted ( Build/Verify with fix : 31 % )
+
+            if ( $status_string =~ /Impacted/ ) {
+                $status_string = 'Impacted';
+            }
+
+            $tmp_hash->{status} =
+              lib_raid_codes::get_state_code($status_string);
+
+            ( $err_code, $status_string, $progression ) =
+              _get_lun_status( $controller_number, $lun_number );
+
+            my $taskstatus = lib_raid_codes::get_state_code($status_string);
+
+        # if the array is in build/verify but OK, it's verify, else it's rebuild
+            if ( $tmp_hash->{status} ) {
+
+                # not optimal
+                if ( $taskstatus != -1 ) {
+                    $tmp_hash->{status}      = 5;              # rebuild
+                    $tmp_hash->{progression} = $progression;
+                }
+            } else {
+
+                # optimal
+                if ( $taskstatus != -1 ) {
+                    $tmp_hash->{status}      = 13;             # verify
+                    $tmp_hash->{progression} = $progression;
+                }
+            }
         }
 
         # Size
@@ -105,8 +117,7 @@ sub get_luns_info {
 
     # I have to find all arrays depending of this lun
     my $local_cache_flag = _enable_cache();
-    $tmp_hash->{arrays} =
-      get_arrays_from_lun( $controller, 'l' . $lun_number );
+    $tmp_hash->{arrays} = get_arrays_from_lun( $controller, 'l' . $lun_number );
     _disable_cache($local_cache_flag);
     $hash->{ 'l' . $lun_number } = $tmp_hash if ( $lun_number > -1 );
 
@@ -170,10 +181,10 @@ sub get_lun_from_drive {
 
     my $lun_number = -1;
     foreach my $line (@tmp_tab) {
-        if (   $line =~ m/Logical device number /
-            && $line !~ m/Logical device number $lun_number/ )
+        if (   $line =~ m/Logical [d|D]evice number /
+            && $line !~ m/Logical [d|D]evice number $lun_number/ )
         {
-            ($lun_number) = ( $line =~ m/Logical device number (\d+)/ );
+            ($lun_number) = ( $line =~ m/Logical [d|D]evice number (\d+)/ );
         } elsif ( $line =~ m/Segment/ && $line =~ m/$slot/ ) {
 
             # arcconf =< 7.00
@@ -185,7 +196,26 @@ sub get_lun_from_drive {
             # arcconf > 7.00
             my ( $con, $dev ) = ( $1, $2 );
             return ( 0, $lun_number ) if ( $slot eq "$con,$dev" );
+        } elsif ( $line =~ m/Segment/
+            && $line =~ m/Enclosure:(\d+), Slot:(\d+)/ )
+        {
+            # arcconf > 9.00, SAS expander
+            my ( $enc, $dev ) = ( $1, $2 );
+            return ( 0, $lun_number ) if ( $slot eq "$enc,$dev" );
+        } elsif ( $line =~ m/Segment/
+            && $line =~ m/Connector:(\d+), Device:(\d+)/ )
+        {
+            # arcconf > 9.00, no SAS expander
+            my ( $enc, $dev ) = ( $1, $2 );
+            return ( 0, $lun_number ) if ( $slot eq "$enc,$dev" );
+        } elsif ( $line =~ m/Segment/
+            && $line =~ m/Channel:(\d+), Device:(\d+)/ )
+        {
+            # arcconf > 9.00, other case
+            my ( $enc, $dev ) = ( $1, $2 );
+            return ( 0, $lun_number ) if ( $slot eq "$enc,$dev" );
         }
+
     }
     return ( 1, 'no lun found for this drive' );
 }

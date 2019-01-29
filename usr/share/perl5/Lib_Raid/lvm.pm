@@ -18,16 +18,16 @@
 ##
 
 package lvm;
-require 'lib_raid_plugins/lvm_controllers.pm';
-require 'lib_raid_plugins/lvm_drives.pm';
-require 'lib_raid_plugins/lvm_arrays.pm';
-require 'lib_raid_plugins/lvm_luns.pm';
+require Lib_Raid::lvm_controllers;
+require Lib_Raid::lvm_drives;
+require Lib_Raid::lvm_arrays;
+require Lib_Raid::lvm_luns;
 
 use strict;
 use warnings;
 use IPC::Run3;
 
-use lib_raid_plugins::lib_raid_codes;
+use Lib_Raid::lib_raid_codes;
 
 use Data::Dumper;
 

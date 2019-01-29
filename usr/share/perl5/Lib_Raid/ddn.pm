@@ -16,13 +16,13 @@
 ##
 
 package ddn;
-require 'lib_raid_plugins/ddn_controllers.pm';
+require Lib_Raid::ddn_controllers;
 
 use strict;
 use warnings;
 use Net::SSH::Expect;
 
-use lib_raid_plugins::lib_raid_codes;
+use Lib_Raid::lib_raid_codes;
 
 use Data::Dumper;
 

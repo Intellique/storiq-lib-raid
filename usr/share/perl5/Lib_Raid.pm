@@ -19,9 +19,6 @@ use strict;
 use warnings;
 use Objet_Conf;
 
-# This var is the path to the plugins directory.
-my $raid_plugins_path = '/usr/local/lib/site_perl/lib_raid_plugins/';
-
 # This hash contains the list of all plugins.
 my $plugin_list = {
     ada => {
@@ -40,7 +37,7 @@ my $plugin_list = {
         module_name => 'ddn.pm',
     },
     lsi => {
-        exe_path    => '/usr/sbin/MegaCli',
+        exe_path    => '/usr/sbin/storcli',
         loaded      => 0,
         module_name => 'lsi.pm',
     },
@@ -160,10 +157,10 @@ sub _require_all_plugins {
         next unless -x $plugin_list->{$plugin}->{'exe_path'};
         next if $plugin_list->{$plugin}->{'loaded'};
 
-        # Trying to instanciate the plugin
+        # Trying to instantiate the plugin
         eval {
             require(
-                $raid_plugins_path . $plugin_list->{$plugin}->{'module_name'} );
+                'Lib_Raid/' . $plugin_list->{$plugin}->{'module_name'} );
         };
 
         # Test if it makes an error
@@ -190,10 +187,10 @@ sub _require_plugin {
 "client for $plugin is not available. You should install storiq-cli-$plugin."
     ) unless ( -x $plugin_list->{$plugin}->{'exe_path'} );
 
-    # Trying to instanciate the plugin
+    # Trying to instantiate the plugin
     eval {
         require(
-            $raid_plugins_path . $plugin_list->{$plugin}->{'module_name'} );
+            'Lib_Raid/' . $plugin_list->{$plugin}->{'module_name'} );
     };
 
     # Test if it makes an error
