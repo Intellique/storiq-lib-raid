@@ -53,11 +53,11 @@ sub get_drive_info {
     my $hash = {
         'status'          => 0,
         'enclosurenumber' => -1,
-        'model'           => undef,
+        'model'           => 'N/A',
         'slotnumber'      => '-1',
         'type'            => -1,
         'connectornumber' => -1,
-        'vendor'          => undef,
+        'vendor'          => 'N/A',
     };
 
     return ( 1, "unable to find the controller $controller" )
@@ -115,7 +115,7 @@ sub get_drive_info {
         my %tmphash;
         for my $prop (qw( vendor model )) {
             open my $fv, '<', "/sys/block/$base_device/device/$prop"
-              or warn "can't open /sys/block/$base_device/device/$prop: $!";
+              or next;
             $tmphash{$prop} = <$fv>;
             chomp $tmphash{$prop};
             $tmphash{$prop} =~ s/\s+//g;

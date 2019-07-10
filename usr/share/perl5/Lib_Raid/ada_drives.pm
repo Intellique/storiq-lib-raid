@@ -104,11 +104,11 @@ sub get_drives_info {
     # splitting my output string in an array
     my @tmp_tab = split( /\n/, $data );
 
-    my $tmp_hash        = {};
+    my $tmp_hash        = { inarray => -128 };
     my $drive_number    = -1;
     my $drivestatus     = 'ok';
-    my $flag_enclosure  = 0;      # my anti-enclosure filter :)
-    my $flag_search_lun = 0;      # flag to active lun state search
+    my $flag_enclosure  = 0;                   # my anti-enclosure filter :)
+    my $flag_search_lun = 0;                   # flag to active lun state search
     foreach my $line (@tmp_tab) {
         if (   $line =~ m/ +Device \#/
             && $line !~ m/ +Device \#$drive_number/ )
@@ -117,8 +117,8 @@ sub get_drives_info {
                 $tmp_hash->{status} =
                   lib_raid_codes::get_drive_status_code($drivestatus);
                 $hash->{ 'd' . $drive_number } = $tmp_hash;
-                $drivestatus                   = 'ok';
-                $tmp_hash                      = {};
+                $drivestatus = 'ok';
+                $tmp_hash = { inarray => -128 };
             }
             ($drive_number) = ( $line =~ m/ +Device \#(\d+)/ );
             $flag_enclosure  = 0;
@@ -131,8 +131,17 @@ sub get_drives_info {
             # Enclosure number
             if ( $line =~ m/ +Reported Location +\: Enclosure/ ) {
                 ( $tmp_hash->{enclosurenumber} ) =
-                  ( $line =~ m/ +Reported Location +\: Enclosure (\d+),/ );
+                  ( $line =~
+m/ +Reported Location +\: Enclosure (\d+|Direct Attached),/
+                  );
+                if ( $tmp_hash->{enclosurenumber} eq 'Direct Attached' ) {
+                    $tmp_hash->{enclosurenumber} = 0;
+                }
+
                 $tmp_hash->{connectornumber} = -1;
+                if ( $line =~ /Connector (\d+)/ ) {
+                    $tmp_hash->{connectornumber} = $1;
+                }
             } elsif ( $line =~ m/ +Reported Location +\: Connector/ ) {
                 ( $tmp_hash->{connectornumber} ) =
                   ( $line =~ m/ +Reported Location +\: Connector (\d+),/ );
@@ -162,10 +171,12 @@ sub get_drives_info {
         }
 
         # If I have to found the lun..
-        if ( $flag_search_lun and $tmp_hash->{slotnumber} ) {
+        if (    $flag_search_lun
+            and $tmp_hash->{slotnumber}
+            and $tmp_hash->{inarray} == -128 )
+        {
             my $local_cache_flag = _enable_cache();
 
-            $tmp_hash->{inarray} = '-128';
             my ( $err, $lun ) =
               get_lun_from_drive( $controller, $tmp_hash->{slotnumber} );
             $tmp_hash->{inarray} = $lun if ( !$err );
@@ -191,7 +202,7 @@ sub get_drives_info {
 
         # serial number
         ( $tmp_hash->{serialnumber} ) =
-          ( $line =~ m/ +Serial number +\: (\w+)/ )
+          ( $line =~ m/ +Serial number +\: ([\w|\-]+)/ )
           if ( $line =~ m/ +Serial number +/ );
 
         # drive status

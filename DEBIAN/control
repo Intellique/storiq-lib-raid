@@ -1,10 +1,10 @@
 Package: storiq-lib-raid
-Version: 2.9.1-1
+Version: 2.10
 Section: Intellique
 Priority: optional
 Architecture: all
 Depends: base-files (>= 8), libipc-run3-perl(>=0.036-1), libnet-ssh-expect-perl, libexpect-perl, librpc-lite-perl, perl-base, storiq-cli-3ware | storiq-cli-adaptec | storiq-cli-areca | storiq-cli-lsi | storiq-cli-xyratex | lvm2 | mdadm
-Recommends: storiq-cli-3ware, storiq-cli-adaptec, storiq-cli-areca, storiq-cli-lsi, storiq-cli-xyratex, mdadm
+Recommends: storiq-cli-adaptec, storiq-cli-areca, storiq-cli-lsi, mdadm
 Maintainer: Developpers Team <dev@intellique.com>
 Description: storiq-lib-raid
  Storiq Raid Library version 2

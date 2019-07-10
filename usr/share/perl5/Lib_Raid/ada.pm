@@ -104,6 +104,7 @@ sub _get_adapter_information {
 
     # splitting my output string in an array
     my @tmp_tab = split( /\n/, $data );
+    $hash->{WWN} = 'unknown';
 
     foreach my $line (@tmp_tab) {
 
@@ -130,6 +131,11 @@ sub _get_adapter_information {
         ( $hash->{status} ) = lib_raid_codes::get_state_code(
             ( $line =~ m/.+Controller Status +\: (.+)/ ) )
           if ( $line =~ m/.+Controller Status +/ );
+	    # WWN
+        ( $hash->{WWN} ) =
+          ( $line =~ m/.+Controller World Wide Name +\: (.+)/ )
+          if ( $line =~ m/.+Controller World Wide Name +/ );
+		
     }
 
     # BBU special foreach
@@ -138,10 +144,10 @@ sub _get_adapter_information {
         $flag = 1
           if (!$flag
             && $line =~
-            m/Controller (Battery|ZMM|Cache Backup Unit) Information/ );
+            m/(Controller (Battery|ZMM|Cache Backup Unit)|Green Backup) Information/ );
 
-        if ( $flag and $line =~ m/.+Unit Status +\: (.+)/ ) {
-            $hash->{BBU}->{status} = lib_raid_codes::get_state_code( ($1) );
+        if ( $flag and $line =~ m/.+(Unit|Backup Power) Status +\: (.+)/ ) {
+            $hash->{BBU}->{status} = lib_raid_codes::get_state_code( ($2) );
         }
 
         if ( $line =~ m/.+Capacity remaining \s+:\s+(\d+) percent/ and $flag ) {
@@ -172,7 +178,6 @@ m/.+Time remaining \(at current draw\)\s+:\s+(\d+) days, (\d+) hours, (\d+) minu
 
     }
 
-    $hash->{WWN} = 'unknown';
     return (0);
 }
 

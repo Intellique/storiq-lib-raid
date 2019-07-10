@@ -66,6 +66,7 @@ sub get_luns_info {
         # Lun Name
         if ( $line =~ m/ +Logical [d|D]evice name +\: (.*)/ ) {
             $tmp_hash->{name} = $1;
+			$tmp_hash->{name} =~ s/\s+$//g;
         }
 
         # Lun Status
@@ -107,8 +108,8 @@ sub get_luns_info {
         }
 
         # Size
-        if ( $line =~ m/ +Size +/ ) {
-            ( $tmp_hash->{size} ) = ( $line =~ m/ +Size +\: (\d+)/ );
+        if ( $line =~ m/^ +Size +\: (\d+)/ ) {
+            $tmp_hash->{size} = $1;
 
 # In MB..
 # $tmp_hash->{size} = sprintf("%.2f", $tmp_hash->{size} / 1024); # in GB please !
@@ -189,26 +190,26 @@ sub get_lun_from_drive {
 
             # arcconf =< 7.00
             return ( 0, $lun_number );
-        } elsif ( $line =~ m/Segment/
+        } elsif ( $line =~ m/Segment|Device \d+/
             && $line =~ m/Controller:$controller_number,\w+:(\d+),\w+:(\d+)/ )
         {
 
             # arcconf > 7.00
             my ( $con, $dev ) = ( $1, $2 );
             return ( 0, $lun_number ) if ( $slot eq "$con,$dev" );
-        } elsif ( $line =~ m/Segment/
+        } elsif ( $line =~ m/Segment|Device \d+/
             && $line =~ m/Enclosure:(\d+), Slot:(\d+)/ )
         {
             # arcconf > 9.00, SAS expander
             my ( $enc, $dev ) = ( $1, $2 );
             return ( 0, $lun_number ) if ( $slot eq "$enc,$dev" );
-        } elsif ( $line =~ m/Segment/
+        } elsif ( $line =~ m/Segment|Device \d+/
             && $line =~ m/Connector:(\d+), Device:(\d+)/ )
         {
             # arcconf > 9.00, no SAS expander
             my ( $enc, $dev ) = ( $1, $2 );
             return ( 0, $lun_number ) if ( $slot eq "$enc,$dev" );
-        } elsif ( $line =~ m/Segment/
+        } elsif ( $line =~ m/Segment|Device \d+/
             && $line =~ m/Channel:(\d+), Device:(\d+)/ )
         {
             # arcconf > 9.00, other case

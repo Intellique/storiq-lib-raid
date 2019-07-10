@@ -26,8 +26,54 @@ our $are_cmd;
 sub get_arrays_info {
     my ($controller) = @_;
 
+	my $info = {};
 
-	my $hash = {};
+	# RAID set INFO
+    my $cmd = "$are_cmd rsf info";
+    my ( $ret_code, $data ) = _exec_cmd($cmd);
+    return ( $ret_code, "unable to get array informations : $data" )
+      if ($ret_code);
+
+    my @tmp_tab = split( /\n/, $data );
+	our $arrayname_to_id;
+
+	foreach my $line (@tmp_tab) {
+		if ( $line =~ m/^ (\d+)\s+([\w|-]+)\s+(\d+)\s+(\d+\.?\d+?)GB\s+(\d+\.?\d+?)GB\s+(\d+\.?\d+?)GB\s+(\w+)/ ) {
+
+			$arrayname_to_id->{$2}="a$1";
+
+			$info->{arrays}{"a$1"} = {
+				name => $2,
+				size => $4*1000,
+				status => lib_raid_codes::get_drive_status_code($7)
+			};
+		}
+	}
+
+	#RAID Vol Info
+    $cmd = "$are_cmd vsf info";
+    ( $ret_code, $data ) = _exec_cmd($cmd);
+    return ( $ret_code, "unable to get lun informations : $data" )
+      if ($ret_code);
+
+    @tmp_tab = split( /\n/, $data );
+
+	foreach my $line (@tmp_tab) {
+ 		if ( $line =~ m#^ +(\d+)\s+([\w|\-|\#]+)\s+([\w|-]+)\s+(\w+)\s+(\d+\.?\d+?)GB\s+\d+/\d+/\d+\s+(\w+)# ) {
+			$info->{luns}{"l$1"} = {
+				name => $2,
+				size => $5*1000,
+				status => lib_raid_codes::get_drive_status_code($6)
+			};
+		
+		# copy lun raid level and size to array (we don't manage it this way...)
+		$info->{arrays}{$arrayname_to_id->{$3}}{raidtype} = lib_raid_codes::get_raid_level_code($4) ;
+		$info->{arrays}{$arrayname_to_id->{$3}}{size} = $info->{luns}{"l$1"}{size};
+		
+ 		}
+	}
+
+
 	
 #         # Raid Type
 #         ( $tmp_hash->{raidtype} ) = ( $line =~ m/ +RAID level +\: (\d+E*)/ )
@@ -62,7 +108,7 @@ sub get_arrays_info {
 #         }
 # 
 
-    return ( 0, $hash );
+    return ( 0, $info );
 }
 
 # This function returns an hash containing
@@ -89,8 +135,6 @@ sub get_array_info {
 # [1] : Ok => list, Fail => error_msg
 sub get_arrays_list {
     my ($controller) = @_;
-
-    my $cmd = "$are_cmd rsf info";
 	
     my ($controller_number) = ( $controller =~ m/$CONTROLLER_PREFIX(\d+)/ );
     return ( 1, "unable to find the controller $controller" )

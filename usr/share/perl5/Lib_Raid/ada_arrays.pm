@@ -73,8 +73,8 @@ sub get_arrays_info {
           if ( $line =~ m/ +Stripe-unit size +/ );
 
         # Size
-        if ( $line =~ m/ +Size +/ ) {
-            ( $tmp_hash->{size} ) = ( $line =~ m/ +Size +\: (\d+)/ );
+        if ( $line =~ m/^ +Size +\: (\d+)/ ) {
+            $tmp_hash->{size} = $1;
         }
 
         # Array Status
@@ -116,7 +116,7 @@ sub get_arrays_info {
         }
 
         # Drive number
-        if ( $line =~ m/Segment/ && $line !~ m/Missing/ ) {
+        if ( $line =~ m/Segment|Device \d+/ && $line !~ m/Missing/ ) {
             my ($channel) = ( $line =~ m/.+: \w+ \((.+)\).+/ );
 
             my ( $err, $data );

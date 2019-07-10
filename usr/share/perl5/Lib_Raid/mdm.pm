@@ -225,8 +225,26 @@ sub get_all_info {
                         open my $modfh, '<',
                           "/sys/block/$shortdisk/device/model";
                         $hash->{mdm}{drives}{$disk}{model} = <$modfh>;
+						$hash->{mdm}{drives}{$disk}{model} =~ s/\s+$//g;
                         chomp $hash->{mdm}{drives}{$disk}{model};
                         close $modfh;
+                    }
+
+                    if ( -f "/sys/block/$shortdisk/device/vendor" ) {
+                        open my $vfh, '<', "/sys/block/$shortdisk/device/vendor";
+                        $hash->{mdm}{drives}{$disk}{vendor} = <$vfh>;
+						$hash->{mdm}{drives}{$disk}{vendor} =~ s/\s+$//g;
+                        chomp $hash->{mdm}{drives}{$disk}{vendor};
+                        close $vfh;
+                    }
+
+                    if ( -f "/sys/block/$shortdisk/device/wwid" ) {
+                        open my $wfh, '<', "/sys/block/$shortdisk/device/wwid";
+						my $wwid = <$wfh>;
+                        ( $hash->{mdm}{drives}{$disk}{serialnumber} ) = ( $wwid =~ /(\w+)\s*$/g );
+						$hash->{mdm}{drives}{$disk}{vendor} =~ s/\s+$//g;
+                        chomp $hash->{mdm}{drives}{$disk}{serialnumber};
+                        close $wfh;
                     }
 
                 }

@@ -48,9 +48,10 @@ sub get_controller_info {
         if ( $ctlnum and $ctl_name eq $CONTROLLER_PREFIX . $ctlnum ) {
             $ctlinfo->{vendor}         = 'Areca';
             $ctlinfo->{model}          = $ctl_model;
-            $ctlinfo->{numberofspares} = -1;
+            $ctlinfo->{numberofspares} =  0;
             $ctlinfo->{numberofarrays} = -1;
             $ctlinfo->{numberofluns}   = -1;
+			$ctlinfo->{status}         =  0;
         }
     }
 
