@@ -26,6 +26,7 @@ our $are_cmd;
 # [1] : Ok => array, Fail => error_msg
 sub get_drives_list {
     my $controller = shift;
+    my ($controller_number) = ( $controller =~ m/$CONTROLLER_PREFIX(\d+)/ );
 
     # Drive Array (run first because of cache execution time out)
     our $arrayname_to_id;
@@ -37,11 +38,12 @@ sub get_drives_list {
       if ( !defined($controller_num) );
 
     # getting informations about drives
-    my ( $ret_code, $data ) = _exec_cmd("$are_cmd disk info");
+    my ( $ret_code, $data ) =
+      _exec_cmd("$are_cmd ctrl=$controller_number disk info");
 
     return ( $ret_code, "unable to get drives informations : $data" )
       if ( $ret_code eq 1 );
-
+	
     # splitting my output string in an array
     my @tmp_tab = split( /\n/, $data );
 
@@ -49,9 +51,10 @@ sub get_drives_list {
     foreach my $line (@tmp_tab) {
         next
           if ( $line !~
-m/^\s+(\d+)\s+(\d+)\s+Disk(\d+)\s+(\w+)\s+(\w+)\s+([\d\.]+)([G|M|T])B\s+([[\w|-]+)/
+m/^\s+(\d+)\s+(\d+)\s+\w+\s*(\d+)\s+(\w+)\s+(\w+)\s+([\d\.]+)([G|M|T])B\s+(.{15})/
           );
         my $drive_number = $1;
+		
         $drives->{ "d" . $drive_number } = {
             'status'          => -128,
             'enclosurenumber' => $2,
@@ -62,11 +65,12 @@ m/^\s+(\d+)\s+(\d+)\s+Disk(\d+)\s+(\w+)\s+(\w+)\s+([\d\.]+)([G|M|T])B\s+([[\w|-]
             'inarray'         => $arrayname_to_id->{$8}
         };
 
-            $7 eq 'G' ? $drives->{ "d" . $drive_number }{size} *= 1000
+        $7 eq 'G' ? $drives->{ "d" . $drive_number }{size} *=
+            1000
           : $7 eq 'T' ? $drives->{ "d" . $drive_number }{size} *= 1000000
           :             undef;
 
-        if ( $8 eq 'HotSpare' ) {
+        if ( $8 =~ /HotSpare/ ) {
             $drives->{ "d" . $drive_number }{inarray} = -2;
         } else {
             $drives->{ "d" . $drive_number }{inarray} =~ s/a//;
@@ -83,7 +87,8 @@ m/^\s+(\d+)\s+(\d+)\s+Disk(\d+)\s+(\w+)\s+(\w+)\s+([\d\.]+)([G|M|T])B\s+([[\w|-]
 # [1] : Ok => hash, Fail => error_msg
 sub get_drive_info {
     my ( $controller, $drive ) = @_;
-    print "#********** get_drive_info $controller  $drive ********\n";
+
+    # print "#********** get_drive_info $controller  $drive ********\n";
     my $hash = {};
 
     my ($controller_num) = ( $controller =~ m/$CONTROLLER_PREFIX(\d+)/ );
@@ -142,7 +147,8 @@ sub get_drive_info {
         # Size
         if ( $line =~ /^Disk Capacity\s+:\s(\d+\.?[\d+]?)([G|T|M])B/ ) {
             $hash->{size} = $1;
-                $2 eq 'G' ? $hash->{size} *= 1000
+            $2 eq 'G' ? $hash->{size} *=
+                1000
               : $2 eq 'T' ? $hash->{size} *= 1000000
               :             undef;
         }
