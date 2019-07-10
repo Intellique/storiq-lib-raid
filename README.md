@@ -7,6 +7,6 @@ Simply build the content of the repository as a Debian package after putting awa
 
 dpkg --build .  ../storiq-lib-raid_<version>_all.deb
 
-And install the package. The resulting package works on Squeeze and Wheezy.
+And install the package. The resulting package works on Jessie and Stretch.
 
 For Adaptec, LSI Megaraid, 3Ware and Xyratex controllers, you'll need the additional proprietary command line tools. LVM, MD raid and DDN controllers work without any tools other than the usual lvm2 tools, mdadm and ssh.
